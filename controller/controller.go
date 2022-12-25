@@ -62,13 +62,15 @@ func (c *Controller) loadConfig() error {
 		return err
 	}
 
-	c.keyword, err = push.LoadKeyword(filepath.Join(c.confDir, "message.json"))
-	if err != nil {
-		return err
-	}
-
 	c.subscriber = opensips.NewSubService(c.serverConf)
-	c.push = push.NewPushService(c.serverConf)
+
+	if c.serverConf.IsSupportPush() {
+		c.keyword, err = push.LoadKeyword(filepath.Join(c.confDir, "message.json"))
+		if err != nil {
+			return err
+		}
+		c.push = push.NewPushService(c.serverConf)
+	}
 	c.proxyConf = ProxyConf{
 		Url:  c.serverConf.Transit.Url,
 		SUrl: c.serverConf.Transit.SUrl,
@@ -136,6 +138,14 @@ func (c *Controller) keepAliveHandlerFunc(ctx *gin.Context) {
 
 func (c *Controller) pushHandlerFunc(ctx *gin.Context) {
 	logrus.Infof("/push called")
+	if c.push == nil {
+		ctx.JSON(http.StatusServiceUnavailable, Result{
+			Status:  http.StatusServiceUnavailable,
+			Message: "Unsupported handler",
+		})
+		return
+	}
+
 	var message push.IntercomMessage
 	if err := ctx.ShouldBindJSON(&message); err != nil {
 		ctx.JSON(http.StatusBadRequest, Result{
@@ -232,8 +242,10 @@ func (c *Controller) registerHandlerFunc(ctx *gin.Context) {
 		c.createRegisterResponse(ctx, user)
 		return
 	}
-	if !opensips.IsUserValid(db_user, c.serverConf.Opensips.Domain) {
-		//user in database not valid,so we update
+	if !opensips.IsUserValid(db_user, c.serverConf.Opensips.Domain) ||
+		!strings.EqualFold(db_user.Password, user.Password) {
+		//user in database not valid or password dismatch,so we update
+		//for P2P device,this device not use fixed username and password
 		err = c.subscriber.UpdateUser(user)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, Result{

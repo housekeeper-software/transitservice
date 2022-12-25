@@ -67,3 +67,10 @@ func (c *ServerConfig) WriteConfigToFile(file string) error {
 	}
 	return ioutil.WriteFile(file, data, 0644)
 }
+
+func (c *ServerConfig) IsSupportPush() bool {
+	return len(c.Push.SendAttachMsgUrl) > 0 &&
+		len(c.Push.AppAccid) > 0 &&
+		len(c.Push.AppKey) > 0 &&
+		len(c.Push.AppSecret) > 0
+}

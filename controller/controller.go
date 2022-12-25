@@ -245,7 +245,7 @@ func (c *Controller) registerHandlerFunc(ctx *gin.Context) {
 	if !opensips.IsUserValid(db_user, c.serverConf.Opensips.Domain) ||
 		!strings.EqualFold(db_user.Password, user.Password) {
 		//user in database not valid or password dismatch,so we update
-		//for P2P device,this device not use fixed username and password
+		//for P2P device use fixed username and password
 		err = c.subscriber.UpdateUser(user)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, Result{

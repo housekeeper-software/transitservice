@@ -16,6 +16,8 @@ type Keyword struct {
 	DefaultBody  string `json:"defaultBody"`
 	Titles       []Pair `json:"title"`
 	Bodys        []Pair `json:"body"`
+	titleMap     map[string]string
+	bodyMap      map[string]string
 }
 
 func LoadKeyword(file string) (*Keyword, error) {
@@ -28,30 +30,29 @@ func LoadKeyword(file string) (*Keyword, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.titleMap = make(map[string]string)
+	c.bodyMap = make(map[string]string)
+	for _, v := range c.Titles {
+		c.titleMap[strings.ToLower(v.Name)] = v.Value
+	}
+	for _, v := range c.Bodys {
+		c.bodyMap[strings.ToLower(v.Name)] = v.Value
+	}
 	return &c, nil
 }
 
 func (c *Keyword) Replace(message *IntercomMessage) {
-	found := false
-	for _, v := range c.Titles {
-		if strings.EqualFold(v.Name, message.Title) {
-			message.Title = v.Value
-			found = true
-			break
-		}
-	}
-	if !found {
+	lowTitle := strings.ToLower(message.Title)
+	lowBody := strings.ToLower(message.Body)
+
+	if v, ok := c.titleMap[lowTitle]; ok {
+		message.Title = v
+	} else {
 		message.Title = c.DefaultTitle
 	}
-	found = false
-	for _, v := range c.Bodys {
-		if strings.EqualFold(v.Name, message.Body) {
-			message.Body = v.Value
-			found = true
-			break
-		}
-	}
-	if !found {
+	if v, ok := c.bodyMap[lowBody]; ok {
+		message.Body = v
+	} else {
 		message.Body = c.DefaultBody
 	}
 }
